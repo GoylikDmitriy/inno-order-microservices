@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    database-platform: ${SPRING_JPA_DATABASE_PLATFORM}
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  liquibase:
+    enabled: true
+    change-log: ${SPRING_LIQUIBASE_CHANGELOG}
+    default-schema: public
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      default:
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+  timelimiter:
+    instances:
+      default:
+        timeoutDuration: 5s
+
+server:
+  port: 8083
+
+client:
+  gateway:
+    url: ${GATEWAY_URL:http://localhost:8080}
+
+app:
+  internal:
+    api-keys:
+      order-service: ${ORDER_SERVICE_API_KEY}

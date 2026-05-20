@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-items-table
+      author: goylik
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - not:
+            - tableExists:
+              tableName: items
+      changes:
+        - createTable:
+            tableName: items
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: price
+                  type: DECIMAL(10, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+        - createIndex:
+            indexName: idx_items_name
+            tableName: items
+            columns:
+              - column:
+                  name: name

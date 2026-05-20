@@ -1,0 +1,45 @@
+version: '3.8'
+services:
+  order-service-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - '5434:5432'
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGDATA=/data/postgres-order-service
+    volumes:
+      - ./postgres-order-service-data:/data/postgres-order-service
+    networks:
+      - order-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  order-service:
+    build: .
+    restart: always
+    ports:
+      - '8083:8083'
+    depends_on:
+      order-service-postgres:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_DATABASE_PLATFORM=${SPRING_JPA_DATABASE_PLATFORM}
+      - SPRING_LIQUIBASE_CHANGELOG=${SPRING_LIQUIBASE_CHANGELOG}
+      - CLIENT_USER_SERVICE_URL=${CLIENT_USER_SERVICE_URL}
+      - APP_INTERNAL_API_KEYS_ORDER_SERVICE=${ORDER_SERVICE_API_KEY}
+    networks:
+      - order-network
+
+networks:
+  order-network:
+    driver: bridge

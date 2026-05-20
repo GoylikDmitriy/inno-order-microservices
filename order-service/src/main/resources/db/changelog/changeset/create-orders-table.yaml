@@ -1,0 +1,65 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-orders-table
+      author: goylik
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - not:
+            - tableExists:
+              tableName: orders
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_price
+                  type: DECIMAL(10, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+        - createIndex:
+            indexName: idx_orders_status
+            tableName: orders
+            columns:
+              - column:
+                  name: status
+
+        - sql:
+            sql: |
+              CREATE INDEX idx_orders_user_id_active
+              ON orders(user_id)
+              WHERE deleted = false;
+            dbms: postgresql
