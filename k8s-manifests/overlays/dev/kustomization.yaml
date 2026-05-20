@@ -1,0 +1,44 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: inno
+
+labels:
+  - pairs:
+      environment: dev
+      managed-by: kustomize
+    includeSelectors: true
+    includeTemplates: true
+
+commonAnnotations:
+  team: goylik
+
+resources:
+  - ../../base/config
+  - ../../base/kafka
+  - ../../base/ingress
+
+  - ../../base/userService
+  - ../../base/authService
+  - ../../base/orderService
+  - ../../base/paymentService
+  - ../../base/apiGateway
+
+images:
+  - name: goylikdmitry/auth-service
+    newTag: latest
+  - name: goylikdmitry/user-service
+    newTag: latest
+  - name: goylikdmitry/order-service
+    newTag: latest
+  - name: goylikdmitry/payment-service
+    newTag: latest
+  - name: goylikdmitry/api-gateway
+    newTag: latest
+
+patches:
+  - path: patches/user-replicas.yaml
+  - path: patches/auth-replicas.yaml
+  - path: patches/order-replicas.yaml
+  - path: patches/payment-replicas.yaml
+  - path: patches/gateway-replicas.yaml

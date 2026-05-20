@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: inno
+data:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://order-postgres:5432/order_db"
+  SPRING_JPA_DATABASE_PLATFORM: "org.hibernate.dialect.PostgreSQLDialect"
+  SPRING_LIQUIBASE_CHANGELOG: "classpath:db/changelog/db.changelog-master.yaml"
