@@ -1,0 +1,255 @@
+version: '3.8'
+
+services:
+  user-service-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_DB=${USER_POSTGRES_DB}
+      - POSTGRES_USER=${USER_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${USER_POSTGRES_PASSWORD}
+      - PGDATA=/data/postgres-user-service
+    volumes:
+      - ./postgres-user-service-data:/data/postgres-user-service
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${USER_POSTGRES_USER}", "-d", "${USER_POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - '5433:5432'
+    environment:
+      - POSTGRES_DB=${AUTH_POSTGRES_DB}
+      - POSTGRES_USER=${AUTH_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${AUTH_POSTGRES_PASSWORD}
+      - PGDATA=/data/postgres-auth-service
+    volumes:
+      - ./postgres-auth-service-data:/data/postgres-auth-service
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${AUTH_POSTGRES_USER}", "-d", "${AUTH_POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  order-service-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - '5434:5432'
+    environment:
+      - POSTGRES_DB=${ORDER_POSTGRES_DB}
+      - POSTGRES_USER=${ORDER_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${ORDER_POSTGRES_PASSWORD}
+      - PGDATA=/data/postgres-order-service
+    volumes:
+      - ./postgres-order-service-data:/data/postgres-order-service
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${ORDER_POSTGRES_USER}", "-d", "${ORDER_POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - ./redis-data:/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build: ./auth-service
+    restart: always
+    ports:
+      - '8082:8082'
+    depends_on:
+      auth-service-postgres:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=${AUTH_SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${AUTH_SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${AUTH_SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_DATABASE_PLATFORM=${AUTH_SPRING_JPA_DATABASE_PLATFORM}
+      - SPRING_LIQUIBASE_CHANGELOG=${AUTH_SPRING_LIQUIBASE_CHANGELOG}
+      - APP_JWT_SECRET=${JWT_SECRET}
+      - APP_JWT_ACCESS_TOKEN_EXPIRATION_MS=${JWT_ACCESS_TOKEN_EXPIRATION_MS}
+      - APP_JWT_REFRESH_TOKEN_EXPIRATION_MS=${JWT_REFRESH_TOKEN_EXPIRATION_MS}
+      - USER_SERVICE_API_KEY=${USER_SERVICE_API_KEY}
+    networks:
+      - microservices-network
+
+  user-service:
+    build: ./user-service
+    restart: always
+    ports:
+      - '8081:8081'
+    depends_on:
+      user-service-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=${USER_SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${USER_SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${USER_SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_DATABASE_PLATFORM=${USER_SPRING_JPA_DATABASE_PLATFORM}
+      - SPRING_LIQUIBASE_CHANGELOG=${USER_SPRING_LIQUIBASE_CHANGELOG}
+      - APP_PAYMENT_CARD_ENCRYPTION_BASE64_KEY=${PAYMENT_CARD_ENCRYPTION_BASE64_KEY}
+      - USER_SERVICE_API_KEY=${USER_SERVICE_API_KEY}
+      - ORDER_SERVICE_API_KEY=${ORDER_SERVICE_API_KEY}
+      - GATEWAY_API_KEY=${GATEWAY_API_KEY}
+      - GATEWAY_URL=${GATEWAY_URL}
+    networks:
+      - microservices-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    restart: unless-stopped
+    ports:
+      - '2181:2181'
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - microservices-network
+
+  kafka-service:
+    image: confluentinc/cp-kafka:7.6.0
+    restart: unless-stopped
+    ports:
+      - '9092:9092'
+      - '9093:9093'
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${KAFKA_BOOTSTRAP_SERVERS},PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    restart: unless-stopped
+    ports:
+      - '8099:8080'
+    depends_on:
+      kafka-service:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+    networks:
+      - microservices-network
+
+  order-service:
+    build: ./order-service
+    restart: always
+    ports:
+      - '8083:8083'
+    depends_on:
+      order-service-postgres:
+        condition: service_healthy
+      kafka-service:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=${ORDER_SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${ORDER_SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${ORDER_SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_DATABASE_PLATFORM=${ORDER_SPRING_JPA_DATABASE_PLATFORM}
+      - SPRING_LIQUIBASE_CHANGELOG=${ORDER_SPRING_LIQUIBASE_CHANGELOG}
+      - CLIENT_GATEWAY_URL=${GATEWAY_URL}
+      - ORDER_SERVICE_API_KEY=${ORDER_SERVICE_API_KEY}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+    networks:
+      - microservices-network
+
+  payment-mongodb:
+    image: mongo:7-jammy
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${PAYMENT_MONGO_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${PAYMENT_MONGO_PASSWORD}
+      - MONGO_INITDB_DATABASE=${PAYMENT_MONGO_DB}
+    volumes:
+      - ./payment-mongodb-data:/data/db
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  payment-service:
+    build: ./payment-service
+    restart: always
+    ports:
+      - '8084:8084'
+    depends_on:
+      payment-mongodb:
+        condition: service_healthy
+      kafka-service:
+        condition: service_healthy
+      gateway:
+        condition: service_started
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - PAYMENT_MONGODB_URI=mongodb://${PAYMENT_MONGO_USER}:${PAYMENT_MONGO_PASSWORD}@payment-mongodb:27017/${PAYMENT_MONGO_DB}?authSource=admin
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - GATEWAY_URL=${GATEWAY_URL}
+    networks:
+      - microservices-network
+
+  gateway:
+    build: ./api-gateway
+    restart: always
+    ports:
+      - '8080:8080'
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - GATEWAY_API_KEY=${GATEWAY_API_KEY}
+      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL}
+      - USER_SERVICE_URL=${USER_SERVICE_URL}
+      - ORDER_SERVICE_URL=${ORDER_SERVICE_URL}
+      - PAYMENT_SERVICE_URL=${PAYMENT_SERVICE_URL}
+    networks:
+      - microservices-network
+
+networks:
+  microservices-network:
+    driver: bridge
