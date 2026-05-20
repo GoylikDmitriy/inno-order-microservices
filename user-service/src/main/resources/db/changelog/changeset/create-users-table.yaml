@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-users-table
+      author: goylik
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - not:
+          - tableExists:
+            tableName: users
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(127)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: surname
+                  type: VARCHAR(127)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: birth_date
+                  type: DATE
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+
+        - sql:
+            sql: |
+              CREATE UNIQUE INDEX uq_users_email_active
+              ON users(email)
+              WHERE deleted_at IS NULL;
+            dbms: "postgresql"

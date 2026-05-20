@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/user-service-db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:1234}
+  jpa:
+    database-platform: ${SPRING_JPA_DATABASE_PLATFORM:org.hibernate.dialect.PostgreSQLDialect}
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  liquibase:
+    enabled: true
+    change-log: ${SPRING_LIQUIBASE_CHANGELOG:classpath:db/changelog/db.changelog-master.yaml}
+    default-schema: public
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 6000
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      default:
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+  timelimiter:
+    instances:
+      default:
+        timeoutDuration: 5s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      show-components: always
+  info:
+    env:
+      enabled: true
+
+client:
+  gateway:
+    url: ${GATEWAY_URL:http://localhost:8080}
+
+server:
+  port: 8081
+
+app:
+  payment-card:
+    encryption:
+      base64-key: ${APP_PAYMENT_CARD_ENCRYPTION_BASE64_KEY:17kqIAFU7411I84BYLfsif12Ir42uewb}
+    limit-per-user: 5
+  internal:
+    api-keys:
+      user-service: ${USER_SERVICE_API_KEY}
+      order-service: ${ORDER_SERVICE_API_KEY}

@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    database-platform: ${SPRING_JPA_DATABASE_PLATFORM}
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  liquibase:
+    enabled: true
+    change-log: ${SPRING_LIQUIBASE_CHANGELOG}
+    default-schema: public
+  data:
+    redis:
+      host: user-service-redis
+      port: 6379
+      timeout: 6000
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      default:
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+  timelimiter:
+    instances:
+      default:
+        timeoutDuration: 5s
+
+client:
+  gateway:
+    url: ${GATEWAY_URL}
+
+server:
+  port: 8081
+
+app:
+  payment-card:
+    encryption:
+      base64-key: ${APP_PAYMENT_CARD_ENCRYPTION_BASE64_KEY}
+    limit-per-user: 5
+  internal:
+    api-keys:
+      user-service: ${USER_SERVICE_API_KEY}
+      order-service: ${ORDER_SERVICE_API_KEY}

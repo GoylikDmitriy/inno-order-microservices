@@ -1,0 +1,78 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-payment-cards-table
+      author: goylik
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - not:
+            - tableExists:
+              tableName: payment_cards
+      changes:
+        - createTable:
+            tableName: payment_cards
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: number
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: number_hash
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: holder
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expiration_date
+                  type: VARCHAR(7)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+
+        - addForeignKeyConstraint:
+            constraintName: fk_cards_user
+            baseTableName: payment_cards
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - sql:
+            sql: |
+              CREATE INDEX idx_cards_user_id_active
+              ON payment_cards(user_id)
+              WHERE deleted_at IS NULL;
+            dbms: "postgresql"

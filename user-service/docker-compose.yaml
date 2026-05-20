@@ -1,0 +1,64 @@
+version: '3.8'
+services:
+  user-service-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGDATA=/data/postgres-user-service
+    volumes:
+      - ./postgres-user-service-data:/data/postgres-user-service
+    networks:
+      - user-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service-redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    restart: unless-stopped
+    volumes:
+      - ./redis-data:/data/redis-user-service
+    networks:
+      - user-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build: .
+    restart: always
+    ports:
+      - '8081:8081'
+    depends_on:
+      user-service-postgres:
+        condition: service_healthy
+      user-service-redis:
+          condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_DATABASE_PLATFORM=${SPRING_JPA_DATABASE_PLATFORM}
+      - SPRING_LIQUIBASE_CHANGELOG=${SPRING_LIQUIBASE_CHANGELOG}
+      - APP_PAYMENT_CARD_ENCRYPTION_BASE64_KEY=${APP_PAYMENT_CARD_ENCRYPTION_BASE64_KEY}
+      - CLIENT_GATEWAY_URL=${GATEWAY_URL}
+      - APP_INTERNAL_API_KEYS_USER_SERVICE=${USER_SERVICE_API_KEY}
+      - APP_INTERNAL_API_KEYS_ORDER_SERVICE=${ORDER_SERVICE_API_KEY}
+    networks:
+      - user-network
+
+networks:
+  user-network:
+    driver: bridge
