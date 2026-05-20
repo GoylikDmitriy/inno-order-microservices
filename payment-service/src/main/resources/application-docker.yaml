@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: payment-service
+  mongodb:
+    uri: ${PAYMENT_MONGODB_URI}
+  data:
+    mongodb:
+      auto-index-creation: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+
+server:
+  port: 8084
