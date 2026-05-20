@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/auth-service-db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:1234}
+  jpa:
+    database-platform: ${SPRING_JPA_DATABASE_PLATFORM:org.hibernate.dialect.PostgreSQLDialect}
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  liquibase:
+    enabled: true
+    change-log: ${SPRING_LIQUIBASE_CHANGELOG:classpath:db/changelog/db.changelog-master.yaml}
+    default-schema: public
+
+server:
+  port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      show-components: always
+  info:
+    env:
+      enabled: true
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}
+    access-token-expiration-ms: ${APP_JWT_ACCESS_TOKEN_EXPIRATION_MS:900000}
+    refresh-token-expiration-ms: ${APP_JWT_REFRESH_TOKEN_EXPIRATION_MS:604800000}
+    clock-skew-seconds: 30
+  internal:
+    api-keys:
+      trusted-services:
+        - ${GATEWAY_API_KEY}
+        - ${USER_SERVICE_API_KEY}

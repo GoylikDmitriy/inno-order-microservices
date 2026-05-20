@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    database-platform: ${SPRING_JPA_DATABASE_PLATFORM}
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  liquibase:
+    enabled: true
+    change-log: ${SPRING_LIQUIBASE_CHANGELOG}
+    default-schema: public
+
+server:
+  port: 8082
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}
+    access-token-expiration-ms: ${APP_JWT_ACCESS_TOKEN_EXPIRATION_MS}
+    refresh-token-expiration-ms: ${APP_JWT_REFRESH_TOKEN_EXPIRATION_MS}
+    clock-skew-seconds: 30
+  internal:
+    api-keys:
+      trusted-services:
+        - ${GATEWAY_API_KEY}
+        - ${USER_SERVICE_API_KEY}

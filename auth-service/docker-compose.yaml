@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  auth-service-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - '5433:5432'
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGDATA=/data/postgres-auth-service
+    volumes:
+      - ./postgres-auth-service-data:/data/postgres-auth-service
+    networks:
+      - auth-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build: .
+    restart: always
+    ports:
+      - '8082:8082'
+    depends_on:
+      auth-service-postgres:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_DATABASE_PLATFORM=${SPRING_JPA_DATABASE_PLATFORM}
+      - SPRING_LIQUIBASE_CHANGELOG=${SPRING_LIQUIBASE_CHANGELOG}
+      - APP_JWT_SECRET=${APP_JWT_SECRET}
+      - APP_JWT_ACCESS_TOKEN_EXPIRATION_MS=${APP_JWT_ACCESS_TOKEN_EXPIRATION_MS}
+      - APP_JWT_REFRESH_TOKEN_EXPIRATION_MS=${APP_JWT_REFRESH_TOKEN_EXPIRATION_MS}
+    networks:
+      - auth-network
+
+networks:
+  auth-network:
+    driver: bridge
